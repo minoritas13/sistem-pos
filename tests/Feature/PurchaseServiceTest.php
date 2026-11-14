@@ -9,6 +9,7 @@ use App\Models\StockMovement;
 use App\Models\Supplier;
 use App\Services\PurchaseService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class PurchaseServiceTest extends TestCase
@@ -27,12 +28,12 @@ class PurchaseServiceTest extends TestCase
 
     public function test_satu_supplier_satu_pembelian_banyak_kategori(): void
     {
-        $supplier = Supplier::create(['name' => 'PT Serba Ada']);
+        $supplier = Supplier::create(['name' => 'PT Serba Ada'])->fresh();
         $a = $this->product('A', 'Minuman');
         $b = $this->product('B', 'Makanan');
         $c = $this->product('C', 'Kebersihan');
 
-        $service  = app(PurchaseService::class);
+        $service = app(PurchaseService::class);
         $purchase = $service->create($supplier, [
             ['product_id' => $a->id, 'qty' => 10, 'unit_cost' => 5000],
             ['product_id' => $b->id, 'qty' => 5,  'unit_cost' => 3000],
@@ -62,10 +63,10 @@ class PurchaseServiceTest extends TestCase
 
     public function test_terima_tanpa_tempo_dianggap_lunas_tanpa_utang(): void
     {
-        $supplier = Supplier::create(['name' => 'S']);
+        $supplier = Supplier::create(['name' => 'S'])->fresh();
         $a = $this->product('A', 'Minuman');
 
-        $service  = app(PurchaseService::class);
+        $service = app(PurchaseService::class);
         $purchase = $service->create($supplier, [['product_id' => $a->id, 'qty' => 2, 'unit_cost' => 4000]]);
         $received = $service->receive($purchase);
 
@@ -75,10 +76,10 @@ class PurchaseServiceTest extends TestCase
 
     public function test_pembelian_tidak_bisa_diterima_dua_kali(): void
     {
-        $supplier = Supplier::create(['name' => 'S']);
+        $supplier = Supplier::create(['name' => 'S'])->fresh();
         $a = $this->product('A', 'Minuman');
 
-        $service  = app(PurchaseService::class);
+        $service = app(PurchaseService::class);
         $purchase = $service->create($supplier, [['product_id' => $a->id, 'qty' => 2, 'unit_cost' => 4000]]);
         $service->receive($purchase);
 
@@ -94,7 +95,7 @@ class PurchaseServiceTest extends TestCase
 
     public function test_produk_duplikat_dalam_satu_pembelian_ditolak(): void
     {
-        $supplier = Supplier::create(['name' => 'S']);
+        $supplier = Supplier::create(['name' => 'S'])->fresh();
         $a = $this->product('A', 'Minuman');
 
         $this->expectException(BusinessException::class);
@@ -115,10 +116,10 @@ class PurchaseServiceTest extends TestCase
 
     public function test_jatuh_tempo_masa_lalu_ditolak_dan_stok_tidak_berubah(): void
     {
-        $supplier = Supplier::create(['name' => 'S']);
+        $supplier = Supplier::create(['name' => 'S'])->fresh();
         $a = $this->product('A', 'Minuman');
 
-        $service  = app(PurchaseService::class);
+        $service = app(PurchaseService::class);
         $purchase = $service->create($supplier, [['product_id' => $a->id, 'qty' => 2, 'unit_cost' => 4000]]);
 
         try {
@@ -131,4 +132,11 @@ class PurchaseServiceTest extends TestCase
         $this->assertSame(0, $a->fresh()->stock_current);
         $this->assertSame('draft', $purchase->fresh()->status);
     }
+
+    // public function test_debug_database(): void
+    // {
+    //     dump(DB::connection()->getDatabaseName());
+    //     dump(DB::table('suppliers')->count());
+    //     $this->assertTrue(true);
+    // }
 }
